@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Trading App</title>
+    <style>
+        body { 
+            font-family: 'Arial', sans-serif; 
+            background-color: #1e293b; 
+            color: #cbd5e1; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding-top: 50px; 
+            margin: 0; 
+            min-height: 100vh;
+        }
+        .dashboard-container { 
+            background-color: #334155; 
+            padding: 30px 40px; 
+            border-radius: 8px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3); 
+            text-align: center; 
+        }
+        h1 { color: #f5b014; }
+        #userInfo { margin-top: 20px; font-size: 1.2em; }
+        button#logoutButton {
+            margin-top: 30px;
+            padding: 10px 20px;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        button#logoutButton:hover {
+            background-color: #c0392b;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <h1>User Dashboard</h1>
+        <div id="userInfo">Loading user information...</div>
+        <button id="logoutButton">Logout</button>
+    </div>
+
+    <!-- Supabase Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        // Replace with YOUR Supabase Project URL and Anon Key
+        const SUPABASE_URL = 'https://jaftqqbxbwneolzlejep.supabase.co';     // <<<=== REPLACE THIS
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphZnRxcWJ4YnduZW9semxlamVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc1NDg2MjgsImV4cCI6MjA2MzEyNDYyOH0.Xpm-ZfaUyr0gTDj7eUthYF_D-SWAewJeWoa37T1Y3ik';  // <<<=== REPLACE THIS
+
+        let supabaseClient = null;
+
+        if (SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY' &&
+            SUPABASE_URL && SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY) {
+            try {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('Supabase client initialized on dashboard.');
+            } catch (error) {
+                console.error('Error initializing Supabase client on dashboard:', error);
+                document.getElementById('userInfo').textContent = 'Error: App initialization failed.';
+            }
+        } else {
+            console.error('Supabase URL or Anon Key is not configured for dashboard. Please update dashboard.html.');
+            document.getElementById('userInfo').textContent = 'Error: App not configured.';
+        }
+
+        const userInfoDiv = document.getElementById('userInfo');
+        const logoutButton = document.getElementById('logoutButton');
+
+        async function checkUserSessionAndDisplayInfo() {
+            if (!supabaseClient) {
+                userInfoDiv.textContent = 'Application error. Supabase client not available.';
+                return;
+            }
+
+            const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+
+            if (sessionError) {
+                console.error('Error getting session:', sessionError);
+                userInfoDiv.textContent = 'Could not retrieve session.';
+                // Optional: redirect to login if session error is critical
+                // setTimeout(() => { window.location.href = 'login.html'; }, 1500);
+                return;
+            }
+
+            if (session && session.user) {
+                const user = session.user;
+                console.log('User session found:', user);
+                console.log('User metadata:', user.user_metadata); // Log to see the metadata
+
+                // Get username from user_metadata if it exists, otherwise fallback to email
+                const displayName = user.user_metadata && user.user_metadata.username 
+                                    ? user.user_metadata.username 
+                                    : user.email;
+                
+                userInfoDiv.textContent = `Welcome, ${displayName}!`; 
+                                    
+            } else {
+                console.log('No active user session found. Redirecting to login.');
+                userInfoDiv.textContent = 'No user logged in. Redirecting...';
+                setTimeout(() => { window.location.href = 'login.html'; }, 1000);
+            }
+        }
+
+        if (logoutButton && supabaseClient) {
+            logoutButton.addEventListener('click', async () => {
+                const { error } = await supabaseClient.auth.signOut();
+                if (error) {
+                    console.error('Error logging out:', error);
+                    alert('Error logging out: ' + error.message);
+                } else {
+                    console.log('User logged out successfully.');
+                    window.location.href = 'login.html'; 
+                }
+            });
+        }
+
+        // Check session when the page loads
+        if (supabaseClient) { // Only run if client is initialized
+            checkUserSessionAndDisplayInfo();
+        }
+    </script>
+</body>
+</html>

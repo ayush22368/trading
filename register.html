@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account - Trading App</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #1e293b;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            color: #cbd5e1;
+        }
+        .register-container {
+            background-color: #334155;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            width: 380px;
+            text-align: center;
+        }
+        .register-container h1 {
+            color: #f5b014;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        .register-container p {
+            color: #94a3b8;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .register-container label {
+            display: block;
+            text-align: left;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+        .register-container input[type="text"],
+        .register-container input[type="email"],
+        .register-container input[type="password"] {
+            width: calc(100% - 20px); /* Account for padding */
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            border: 1px solid #4b5563;
+            background-color: #1e293b;
+            color: #cbd5e1;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .register-container input[type="text"]:focus,
+        .register-container input[type="email"]:focus,
+        .register-container input[type="password"]:focus {
+            outline: none;
+            border-color: #f5b014;
+            box-shadow: 0 0 0 2px rgba(245, 176, 20, 0.3);
+        }
+        .register-container button[type="submit"] {
+            width: 100%;
+            padding: 12px;
+            background-color: #f5b014;
+            color: #1e293b;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .register-container button[type="submit"]:hover {
+            background-color: #e4a00f;
+        }
+        .register-container .message { /* Style for message div */
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .register-container .success {
+            background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;
+        }
+        .register-container .error {
+            background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;
+        }
+        .register-container .login-link {
+            margin-top: 25px;
+            font-size: 14px;
+        }
+        .register-container .login-link a {
+            color: #f5b014;
+            text-decoration: none;
+        }
+        .register-container .login-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <h1>Create Account</h1>
+        <p>Join our platform and start your trading journey.</p>
+        <form id="registerForm">
+            <div>
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div>
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div>
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" minlength="6" required>
+            </div>
+            <div>
+                <label for="confirm-password">Confirm Password</label>
+                <input type="password" id="confirm-password" name="confirm-password" minlength="6" required>
+            </div>
+            <button type="submit">REGISTER</button>
+        </form>
+        <div id="message" class="message" style="display: none;"></div> <!-- Message div -->
+        <div class="login-link">
+            Already have an account? <a href="login.html">Login here</a>
+        </div>
+    </div>
+
+    <!-- Supabase Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        // Replace with YOUR Supabase Project URL and Anon Key
+        const SUPABASE_URL = 'https://jaftqqbxbwneolzlejep.supabase.co';     // <<<=== REPLACE THIS
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphZnRxcWJ4YnduZW9semxlamVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc1NDg2MjgsImV4cCI6MjA2MzEyNDYyOH0.Xpm-ZfaUyr0gTDj7eUthYF_D-SWAewJeWoa37T1Y3ik';  // <<<=== REPLACE THIS
+
+        let supabaseClient = null; 
+
+        if (SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY' &&
+            SUPABASE_URL && SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY) {
+            try {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('Supabase client initialized successfully for registration.');
+            } catch (error) {
+                console.error('Error initializing Supabase client:', error);
+                const messageDivInit = document.getElementById('message');
+                if (messageDivInit) {
+                    messageDivInit.textContent = 'Error: App initialization failed.';
+                    messageDivInit.className = 'message error';
+                    messageDivInit.style.display = 'block';
+                }
+            }
+        } else {
+            console.error('Supabase URL or Anon Key is not configured. Please update register.html.');
+            const messageDivConfig = document.getElementById('message');
+            if (messageDivConfig) {
+                messageDivConfig.textContent = 'Error: App not configured. Please contact support.';
+                messageDivConfig.className = 'message error';
+                messageDivConfig.style.display = 'block';
+            }
+        }
+
+        const registerForm = document.getElementById('registerForm');
+        const messageDiv = document.getElementById('message');
+
+        if (registerForm && supabaseClient) {
+            registerForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                messageDiv.style.display = 'none';
+                messageDiv.textContent = '';
+                messageDiv.className = 'message';
+
+                const username = document.getElementById('username').value; 
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const confirmPassword = document.getElementById('confirm-password').value;
+
+                if (!username || !email || !password || !confirmPassword) { 
+                    messageDiv.textContent = "Please fill in all required fields.";
+                    messageDiv.className = 'message error';
+                    messageDiv.style.display = 'block';
+                    return;
+                }
+
+                if (password.length < 6) {
+                    messageDiv.textContent = "Password must be at least 6 characters long.";
+                    messageDiv.className = 'message error';
+                    messageDiv.style.display = 'block';
+                    return;
+                }
+
+                if (password !== confirmPassword) {
+                    messageDiv.textContent = "Passwords do not match!";
+                    messageDiv.className = 'message error';
+                    messageDiv.style.display = 'block';
+                    return;
+                }
+
+                try {
+                    const { data, error } = await supabaseClient.auth.signUp({
+                        email: email,
+                        password: password,
+                        options: { 
+                          data: { 
+                            username: username 
+                          }
+                        }
+                    });
+
+                    if (error) {
+                        console.error('Supabase sign up error:', error);
+                        messageDiv.textContent = `Error: ${error.message}`;
+                        messageDiv.className = 'message error';
+                        messageDiv.style.display = 'block';
+                    } else if (data.user) { 
+                        messageDiv.textContent = 'Registration successful! Redirecting to login...';
+                        messageDiv.className = 'message success';
+                        messageDiv.style.display = 'block';
+                        console.log('User signed up:', data.user);
+                        console.log('User metadata with username should be:', data.user.user_metadata);
+                        
+                        setTimeout(() => {
+                            window.location.href = 'login.html'; 
+                        }, 2000);
+
+                    } else {
+                        console.error('Unexpected response from Supabase sign up:', data);
+                        messageDiv.textContent = 'An unexpected error occurred during registration.';
+                        messageDiv.className = 'message error';
+                        messageDiv.style.display = 'block';
+                    }
+
+                } catch (catchError) {
+                    console.error('Catch block error during registration:', catchError);
+                    messageDiv.textContent = 'An unexpected error occurred. Please try again.';
+                    messageDiv.className = 'message error';
+                    messageDiv.style.display = 'block';
+                }
+            });
+        } else if (!registerForm) {
+            console.error('Register form (registerForm) not found.');
+        } else if (!supabaseClient) {
+            console.error('Supabase client not initialized. Cannot add register form listener.');
+        }
+    </script>
+</body>
+</html>

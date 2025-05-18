@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Trading App</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #1e293b; /* Dark blue-gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            color: #cbd5e1; /* Light gray text */
+        }
+        .login-container {
+            background-color: #334155; /* Slightly lighter card background */
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            width: 350px;
+            text-align: center;
+        }
+        .login-container h1 {
+            color: #f5b014; /* Yellow-orange for heading */
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        .login-container p {
+            color: #94a3b8; /* Lighter text for subtitle */
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .login-container label {
+            display: block;
+            text-align: left;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+        .login-container input[type="email"],
+        .login-container input[type="password"] {
+            width: calc(100% - 20px); /* Account for padding */
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            border: 1px solid #4b5563; /* Darker border */
+            background-color: #1e293b; /* Input background */
+            color: #cbd5e1;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .login-container input[type="email"]:focus,
+        .login-container input[type="password"]:focus {
+            outline: none;
+            border-color: #f5b014;
+            box-shadow: 0 0 0 2px rgba(245, 176, 20, 0.3);
+        }
+        .login-container button[type="submit"] { /* More specific selector */
+            width: 100%;
+            padding: 12px;
+            background-color: #f5b014; /* Yellow-orange button */
+            color: #1e293b; /* Dark text on button */
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .login-container button[type="submit"]:hover {
+            background-color: #e4a00f; /* Slightly darker on hover */
+        }
+        .login-container .message { /* Style for message div */
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .login-container .success {
+            background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;
+        }
+        .login-container .error {
+            background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;
+        }
+        .login-container .register-link {
+            margin-top: 25px;
+            font-size: 14px;
+        }
+        .login-container .register-link a {
+            color: #f5b014;
+            text-decoration: none;
+        }
+        .login-container .register-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>Welcome Back!</h1>
+        <p>Login to access your trading dashboard.</p>
+        <form id="loginForm">
+            <div>
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div>
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit">LOGIN</button>
+        </form>
+        <div id="message" class="message" style="display: none;"></div> <!-- Message div -->
+        <div class="register-link">
+            Don't have an account? <a href="register.html">Register here</a>
+        </div>
+    </div>
+
+    <!-- Supabase Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        // Replace with YOUR Supabase Project URL and Anon Key
+        const SUPABASE_URL = 'https://jaftqqbxbwneolzlejep.supabase.co';     // <<<=== REPLACE THIS WITH YOUR ACTUAL URL
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphZnRxcWJ4YnduZW9semxlamVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc1NDg2MjgsImV4cCI6MjA2MzEyNDYyOH0.Xpm-ZfaUyr0gTDj7eUthYF_D-SWAewJeWoa37T1Y3ik';  // <<<=== REPLACE THIS WITH YOUR ACTUAL ANON KEY
+
+        let supabaseClient = null; 
+
+        if (SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY' &&
+            SUPABASE_URL && SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY) {
+            try {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('Supabase client initialized successfully.');
+            } catch (error) {
+                console.error('Error initializing Supabase client:', error);
+                const messageDivInit = document.getElementById('message');
+                if (messageDivInit) {
+                    messageDivInit.textContent = 'Error: App initialization failed.';
+                    messageDivInit.className = 'message error';
+                    messageDivInit.style.display = 'block';
+                }
+            }
+        } else {
+            console.error('Supabase URL or Anon Key is not configured correctly or is missing. Please update login.html.');
+            const messageDivConfig = document.getElementById('message');
+            if (messageDivConfig) {
+                messageDivConfig.textContent = 'Error: App not configured. Please contact support.';
+                messageDivConfig.className = 'message error';
+                messageDivConfig.style.display = 'block';
+            }
+        }
+
+        const loginForm = document.getElementById('loginForm');
+        const messageDiv = document.getElementById('message');
+
+        if (loginForm && supabaseClient) {
+            loginForm.addEventListener('submit', async (event) => {
+                event.preventDefault(); 
+                messageDiv.style.display = 'none';
+                messageDiv.textContent = '';
+                messageDiv.className = 'message'; // Reset class
+
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+
+                if (!email || !password) {
+                    messageDiv.textContent = "Please fill in both email and password.";
+                    messageDiv.className = 'message error';
+                    messageDiv.style.display = 'block';
+                    return;
+                }
+
+                try {
+                    // Show a "logging in..." message
+                    messageDiv.textContent = 'Logging in...';
+                    messageDiv.className = 'message'; // Neutral styling for "logging in"
+                    messageDiv.style.display = 'block';
+
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({
+                        email: email,
+                        password: password,
+                    });
+
+                    if (error) {
+                        console.error('Supabase login error:', error);
+                        messageDiv.textContent = `Error: ${error.message}`;
+                        messageDiv.className = 'message error';
+                        // messageDiv.style.display = 'block'; // Already visible
+                    } else if (data.user && data.session) {
+                        messageDiv.textContent = 'Login successful! Redirecting to dashboard...';
+                        messageDiv.className = 'message success';
+                        // messageDiv.style.display = 'block'; // Already visible
+                        console.log('User logged in successfully:', data.user);
+                        console.log('Session:', data.session);
+
+                        // Store user information or session token if needed for other pages
+                        // For example, Supabase automatically manages the session in localStorage by default.
+                        // We can retrieve it on other pages.
+
+                        // Redirect to dashboard
+                        setTimeout(() => {
+                            window.location.href = 'dashboard.html'; // We will create this file next
+                        }, 1500); // 1.5 second delay
+                    } else {
+                        // This case implies no error from Supabase, but also no user/session data.
+                        // This might happen if, for example, email confirmation was turned back on and not completed.
+                        // Or if there's an unexpected successful response structure without user/session.
+                        console.error('Unexpected response from Supabase login (no error, but no user/session):', data);
+                        messageDiv.textContent = 'Login failed. Please check your credentials or confirm your email.';
+                        messageDiv.className = 'message error';
+                        // messageDiv.style.display = 'block'; // Already visible
+                    }
+
+                } catch (catchError) {
+                    console.error('Catch block error during login:', catchError);
+                    messageDiv.textContent = 'An unexpected error occurred. Please try again.';
+                    messageDiv.className = 'message error';
+                    messageDiv.style.display = 'block';
+                }
+            });
+        } else if (!loginForm) {
+            console.error('Login form (loginForm) not found in the HTML.');
+        } else if (!supabaseClient) {
+            console.error('Supabase client not initialized. Cannot add login form listener.');
+        }
+    </script>
+</body>
+</html>
