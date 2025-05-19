@@ -3,80 +3,431 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Trading App</title>
+    <title>Dashboard - Mock Trading Platform</title>
+    <!-- QR Code library is not strictly needed for this phase but keeping it from your template -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <style>
-        body { 
-            font-family: 'Arial', sans-serif; 
-            background-color: #1e293b; 
-            color: #cbd5e1; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            padding-top: 50px; 
-            margin: 0; 
-            min-height: 100vh;
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+        :root {
+            --primary-bg: #131722;
+            --secondary-bg: #1e222d;
+            --sidebar-bg: #181c27;
+            --chart-bg: #161a25;
+            --input-bg: #2a2e39;
+            --text-primary: #d1d4dc;
+            --text-secondary: #8c92a0;
+            --accent-color: #f0b90b;
+            --accent-secondary: #2962FF;
+            --danger-color: #FF1744;
+            --border-color: #2a2e39;
+            --border-highlight: #3e434f;
+            --candle-bull-color: #2962FF;
+            --candle-bear-color: #FF1744;
+            --candle-wick-color: #787b86;
+            --grid-line-color: #2a2e39;
+            --axis-text-color: var(--text-secondary);
+            --current-price-line-color: #f0b90b;
+            --current-price-label-bg: var(--current-price-line-color);
+            --current-price-label-text: var(--primary-bg);
+            --green-positive: #00c853;
+            --red-negative: var(--danger-color);
+            --blue-neutral: #2979FF;
+            --button-text-dark: #131722;
         }
-        .dashboard-container { 
-            background-color: #334155; 
-            padding: 30px 40px; 
-            border-radius: 8px; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3); 
-            text-align: center; 
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Arial', sans-serif; background-color: #131722; color: #D1D4DC; display: flex; height: 100vh; overflow: hidden; }
+        .main-container { display: flex; width: 100%; height: 100%; }
+        .left-sidebar { width: 280px; background-color: #1C212D; padding: 15px; display: flex; flex-direction: column; border-right: 1px solid #2A2E39; }
+        .left-sidebar .search-box { width: 100%; padding: 8px; margin-bottom: 10px; background-color: #2A2E39; border: 1px solid #3A3E4A; border-radius: 4px; color: #D1D4DC; }
+        .left-sidebar h3 { font-size: 16px; margin-bottom: 10px; color: #E0E0E0; }
+        .instrument-list-header { display: flex; align-items: center; padding: 6px 3px; margin-bottom: 5px; font-size: 12px; color: #848E9C; border-bottom: 1px solid #2A2E39; }
+        .instrument-list-header .header-symbol { flex: 0 0 150px; padding-left: 5px; }
+        .instrument-list-header .header-signal { flex: 0 0 40px; text-align: center; }
+        .instrument-list-header .header-bid { flex: 1 1 65px; text-align: right; }
+        .instrument-list-header .header-ask { flex: 1 1 65px; text-align: right; padding-right: 5px; }
+        .combined-instrument-list { list-style: none; overflow-y: auto; overflow-x: auto; flex-grow: 1; font-size: 13px; }
+        .combined-instrument-list li, .instrument-list-header { display: flex; align-items: center; padding: 6px 3px; margin-bottom: 1px; border-radius: 3px; min-width: 320px; }
+        .combined-instrument-list li { cursor: pointer; }
+        .combined-instrument-list li:hover { background-color: #2A2E39; }
+        /* Alternating bar colors */
+        .combined-instrument-list li.green-bar { background-color: rgba(0, 177, 93, 0.05); }
+        .combined-instrument-list li.red-bar { background-color: rgba(255, 91, 90, 0.05); }
+        .combined-instrument-list .drag-handle { margin-right: 5px; color: #505867; cursor: grab; }
+        .combined-instrument-list .symbol-icon { width: 18px; height: 18px; margin-right: 5px; display: flex; align-items: center; justify-content: center; }
+        .combined-instrument-list .symbol-name { flex: 1 0 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-left: 3px; margin-right: 5px; }
+        .combined-instrument-list .symbol-extra-icon { width: 16px; height: 16px; margin-left: 0px; margin-right: 3px; display: flex; align-items: center; justify-content: center; }
+        .combined-instrument-list .direction-arrow { flex: 0 0 20px; height: 20px; margin: 0 5px; display: flex; align-items: center; justify-content: center; border-radius: 2px; color: white; font-weight: bold; }
+        .combined-instrument-list .direction-arrow.up { background-color: #00B15D; }
+        .combined-instrument-list .direction-arrow.down { background-color: #FF5B5A; }
+        .combined-instrument-list .direction-arrow.neutral { background-color: #4a5568; }
+        .combined-instrument-list .price-box { flex: 0 0 60px; padding: 4px 3px; margin-left: 2px; border-radius: 2px; text-align: right; color: white; transition: background-color 0.2s; }
+        .combined-instrument-list .bid-box { background-color: #FF5B5A; }
+        .combined-instrument-list .ask-box { background-color: #00B15D; }
+        
+        /* Price change animation classes */
+        .price-up { animation: flashGreen 0.5s; }
+        .price-down { animation: flashRed 0.5s; }
+        
+        @keyframes flashGreen {
+            0% { background-color: #00B15D; }
+            50% { background-color: #00E676; }
+            100% { background-color: #00B15D; }
         }
-        h1 { color: #f5b014; }
-        #userInfo { margin-top: 20px; font-size: 1.2em; }
-        button#logoutButton {
-            margin-top: 30px;
-            padding: 10px 20px;
-            background-color: #e74c3c;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1em;
+        
+        @keyframes flashRed {
+            0% { background-color: #FF5B5A; }
+            50% { background-color: #FF5252; }
+            100% { background-color: #FF5B5A; }
         }
-        button#logoutButton:hover {
-            background-color: #c0392b;
-        }
+        .center-content { flex-grow: 1; display: flex; flex-direction: column; background-color: #131722; overflow: hidden; }
+        .chart-area { flex-grow: 1; background-color: #131722; display: flex; justify-content: center; align-items: center; padding: 0; border-bottom: 1px solid #2A2E39; position: relative; }
+        .chart-top-bar { display: flex; padding: 10px; background-color: #1C212D; border-bottom: 1px solid #2A2E39; align-items: center; }
+        .chart-top-bar .currency-pair-tabs button { background: none; border: none; color: #D1D4DC; padding: 8px 12px; cursor: pointer; font-size: 14px; }
+        .chart-top-bar .currency-pair-tabs button.active { color: #F0B90B; border-bottom: 2px solid #F0B90B; }
+        .chart-controls { margin-left: auto; }
+        .chart-controls button { background-color: #2A2E39; border: 1px solid #3A3E4A; color: #D1D4DC; padding: 6px 10px; margin-left: 5px; border-radius: 3px; cursor: pointer; }
+        .bottom-panel { height: 200px; background-color: #1C212D; display: flex; flex-direction: column; }
+        .bottom-panel-tabs { display: flex; padding: 0 10px; border-bottom: 1px solid #2A2E39; }
+        .bottom-panel-tabs button { background: none; border: none; color: #D1D4DC; padding: 10px 15px; cursor: pointer; font-size: 14px; }
+        .bottom-panel-tabs button.active { color: #F0B90B; border-bottom: 2px solid #F0B90B; }
+        .positions-table-container { flex-grow: 1; overflow: auto; padding: 10px; }
+        .positions-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .positions-table th, .positions-table td { border: 1px solid #2A2E39; padding: 8px; text-align: left; }
+        .positions-table th { background-color: #2A2E39; }
+        .right-sidebar { width: 300px; background-color: #1C212D; padding: 15px; border-left: 1px solid #2A2E39; display: flex; flex-direction: column; }
+        .right-sidebar .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .right-sidebar .header h2 { font-size: 18px; color: #E0E0E0; }
+        .right-sidebar .order-type-tabs { display: flex; margin-bottom: 15px; }
+        .right-sidebar .order-type-tabs button { flex-grow: 1; padding: 10px; background-color: #2A2E39; border: 1px solid #3A3E4A; color: #D1D4DC; cursor: pointer; }
+        .right-sidebar .order-type-tabs button.active { background-color: #3A3E4A; color: #F0B90B; }
+        .right-sidebar .form-group { margin-bottom: 12px; }
+        .right-sidebar .form-group label { display: block; font-size: 13px; margin-bottom: 5px; }
+        .right-sidebar .form-group input { width: 100%; padding: 8px; background-color: #2A2E39; border: 1px solid #3A3E4A; border-radius: 4px; color: #D1D4DC; box-sizing: border-box; }
+        .right-sidebar .buy-sell-buttons { display: flex; justify-content: space-between; margin-top: 20px; }
+        .right-sidebar .buy-sell-buttons button { width: 48%; padding: 12px; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .right-sidebar .buy-button { background-color: #00B15D; color: white; }
+        .right-sidebar .sell-button { background-color: #FF5B5A; color: white; }
+        .footer-bar { background-color: #1C212D; padding: 8px 15px; border-top: 1px solid #2A2E39; font-size: 12px; display: flex; justify-content: space-around; width: 100%; }
+        .footer-item { padding: 5px 10px; border-radius: 4px; }
+        .footer-item .value { font-weight: bold; color: #E0E0E0; }
+        .balance-item { background-color: rgba(41, 98, 255, 0.1); border-left: 3px solid #2962FF; }
+        /* Modal Styles (Generic) */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center; /* Added for better centering */ }
+        .modal-content { background-color: #171B26; padding: 20px; border-radius: 4px; width: 90%; max-width: 380px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h2 { color: #E0E0E0; font-size: 18px; }
+        .modal-close { color: #8c92a0; font-size: 24px; font-weight: bold; cursor: pointer; }
+        .modal-form .form-group label { color: #A0A0A0; } /* Changed from .deposit-form */
+        .modal-form input[type="number"], .modal-form input[type="text"] { width: 100%; padding: 10px; background-color: #212630; border: 1px solid #2A2E39; border-radius: 4px; color: #D1D4DC; box-sizing: border-box; margin-bottom: 15px;}
+        .modal-footer { display: flex; justify-content: flex-end; margin-top: 20px; } /* Changed to flex-end */
+        .modal-footer button { padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; border: none; margin-left:10px;} /* Added margin-left */
+        .cancel-btn { background-color: #4b5563; color: #cbd5e1;} /* Updated cancel button style */
+        .submit-btn { background-color: #2962FF; color: white; } /* Generic submit button */
+        .notification-popup { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #334155; color: #f0b90b; padding: 15px 25px; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 2000; display: none; font-size: 15px; }
     </style>
 </head>
 <body>
-    <div class="dashboard-container">
-        <h1>User Dashboard</h1>
-        <div id="userInfo">Loading user information...</div>
-        <button id="logoutButton">Logout</button>
+    <div class="main-container">
+        <!-- Left Sidebar -->
+        <div class="left-sidebar">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                 <h2 style="font-size:18px; color:#E0E0E0;">Trading Terminal</h2>
+                 <button id="logoutButton" style="background: #3A3E4A; color: #D1D4DC; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer;">Logout</button>
+            </div>
+            <input type="text" id="instrumentSearch" class="search-box" placeholder="Search (e.g. EURUSD)">
+            <div class="instrument-list-header">
+                <span class="header-symbol">Symbol</span>
+                <span class="header-signal">Signal</span>
+                <span class="header-bid">Bid</span>
+                <span class="header-ask">Ask</span>
+            </div>
+            <ul id="instrumentListContainer" class="combined-instrument-list">
+                <!-- Instruments will be populated by JavaScript -->
+            </ul>
+        </div>
+
+        <!-- Center Content Area (Chart + Bottom Panel) -->
+        <div class="center-content">
+            <div class="chart-top-bar">
+                <div id="currencyPairTabsContainer" class="currency-pair-tabs">
+                    <!-- Tabs will be populated by JavaScript -->
+                </div>
+                <div class="chart-controls">
+                    <button data-interval="1">1m</button>
+                    <button data-interval="5">5m</button>
+                    <button data-interval="60">1H</button>
+                    <!-- <button>Indicators</button> -->
+                </div>
+                <div class="top-header-balance" style="margin-left: 15px; display: flex; align-items: center; background-color: rgba(41, 98, 255, 0.1); padding: 5px 10px; border-radius: 4px; border-left: 3px solid #2962FF;">
+                    <span style="color: #8c92a0; margin-right: 8px; font-weight: 500;">Balance:</span>
+                    <span id="topHeaderBalanceValue" style="color: #E0E0E0; font-weight: bold;">10000.00 USD</span>
+                </div>
+            </div>
+            <div class="chart-area">
+                <div class="tradingview-widget-container" style="width: 100%; height: 100%;">
+                  <div id="tradingview_chart_container" style="width: 100%; height: 100%;"></div>
+                </div>
+            </div>
+            <div class="bottom-panel">
+                <div class="bottom-panel-tabs">
+                    <button class="active" data-tab="open">OPEN</button>
+                    <button data-tab="pending">PENDING</button>
+                    <button data-tab="closed">CLOSED</button>
+                </div>
+                <div class="positions-table-container">
+                    <table class="positions-table">
+                        <thead>
+                            <tr><th>Symbol</th><th>Type</th><th>Volume</th><th>Open Price</th><th>Current Price</th><th>S/L</th><th>T/P</th><th>Profit</th></tr>
+                        </thead>
+                        <tbody id="openPositionsTableBody">
+                             <tr><td colspan="8" style="text-align:center; padding: 20px;">No open positions</td></tr>
+                        </tbody>
+                        <tbody id="pendingPositionsTableBody" style="display:none;">
+                             <tr><td colspan="9" style="text-align:center; padding: 20px;">No pending orders</td></tr>
+                        </tbody>
+                        <tbody id="closedPositionsTableBody" style="display:none;">
+                             <tr><td colspan="8" style="text-align:center; padding: 20px;">No closed positions</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="footer-bar">
+                <span class="footer-item">Equity: <span id="equityVal" class="value">10000.00 USD</span></span>
+                <span class="footer-item">Free Margin: <span id="freeMarginVal" class="value">10000.00 USD</span></span>
+                <span class="footer-item balance-item">Balance: <span id="balanceVal" class="value">10000.00 USD</span></span>
+            </div>
+        </div>
+
+        <!-- Right Sidebar (Order Panel) -->
+        <div class="right-sidebar">
+            <div class="header">
+                <h2 id="orderPanelSymbol">XAUUSD</h2> <!-- Will be updated by JS -->
+                <div style="display: flex; align-items: center;">
+                    <div id="userInfoContainer" style="margin-right: 10px; color: var(--text-secondary);">User: <span id="usernameDisplay" style="color: var(--text-primary); font-weight:500;">Loading...</span></div>
+                    <button id="depositButton" style="background: #F0B90B; color: #131722; border: none; padding: 5px 10px; border-radius: 3px; font-weight: bold; cursor: pointer; margin-right: 5px;">Deposit</button>
+                    <button id="withdrawButton" style="background: #2962FF; color: white; border: none; padding: 5px 7px; border-radius: 3px; font-weight: bold; cursor: pointer; font-size: 12px;">Withdraw</button>
+                </div>
+            </div>
+            <div class="order-type-tabs">
+                <button class="active" data-ordertype="market">Market</button>
+                <button data-ordertype="pending">Pending</button>
+            </div>
+            
+            <div id="marketOrderForm">
+                <div class="form-group">
+                    <label for="volume">Volume (Lots)</label>
+                    <input type="number" id="volume" name="volume" value="0.01" step="0.01" min="0.01">
+                </div>
+                <div class="form-group">
+                    <label for="stopLoss">Stop Loss (Price)</label>
+                    <input type="number" id="stopLoss" name="stopLoss" placeholder="Optional" step="any">
+                </div>
+                <div class="form-group">
+                    <label for="takeProfit">Take Profit (Price)</label>
+                    <input type="number" id="takeProfit" name="takeProfit" placeholder="Optional" step="any">
+                </div>
+                <div class="buy-sell-buttons">
+                    <button id="sellButton" class="sell-button">Sell</button>
+                    <button id="buyButton" class="buy-button">Buy</button>
+                </div>
+            </div>
+            
+            <div id="pendingOrderForm" style="display: none;">
+                 <div class="form-group">
+                    <label for="pendingOrderType">Order Type</label>
+                    <select id="pendingOrderType" class="select-pending-type" style="width: 100%; padding: 8px; background-color: #2A2E39; border: 1px solid #3A3E4A; border-radius: 4px; color: #D1D4DC; margin-bottom: 10px;">
+                        <option value="buy_limit">Buy Limit</option>
+                        <option value="sell_limit">Sell Limit</option>
+                        <option value="buy_stop">Buy Stop</option>
+                        <option value="sell_stop">Sell Stop</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="pendingPrice">Entry Price</label>
+                    <input type="number" id="pendingPrice" name="pendingPrice" placeholder="Enter price" required step="any">
+                </div>
+                <div class="form-group">
+                    <label for="pendingVolume">Volume (Lots)</label>
+                    <input type="number" id="pendingVolume" name="pendingVolume" value="0.01" step="0.01" min="0.01">
+                </div>
+                <div class="form-group">
+                    <label for="pendingStopLoss">Stop Loss (Price)</label>
+                    <input type="number" id="pendingStopLoss" name="pendingStopLoss" placeholder="Optional" step="any">
+                </div>
+                <div class="form-group">
+                    <label for="pendingTakeProfit">Take Profit (Price)</label>
+                    <input type="number" id="pendingTakeProfit" name="pendingTakeProfit" placeholder="Optional" step="any">
+                </div>
+                <button id="placePendingOrderButton" class="place-pending-order">Place Order</button>
+            </div>
+        </div>
     </div>
 
-    <!-- Supabase Client Library -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Deposit Modal -->
+    <div id="depositModal" class="modal">
+        <div class="modal-content" style="max-width: 450px; background-color: #1C212D;">
+            <div class="modal-header">
+                <h2>Request Deposit</h2>
+                <span class="modal-close" id="closeDepositModal">×</span>
+            </div>
+            <div id="depositFormContainer" style="padding: 20px;">
+                <div class="form-group">
+                    <label for="cryptoCurrency" style="margin-bottom: 10px; display: block; color: #8c92a0;">Select Currency:</label>
+                    <select id="cryptoCurrency" style="width: 100%; padding: 12px; background-color: #2A2E39; border: 1px solid #3A3E4A; border-radius: 4px; color: #D1D4DC; margin-bottom: 20px;">
+                        <option value="btc">Bitcoin (BTC)</option>
+                        <option value="eth">Ethereum (ETH)</option>
+                        <option value="sol">Solana (SOL)</option>
+                        <option value="usdt">USDT Tether</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="cryptoAmount" style="margin-bottom: 10px; display: block; color: #8c92a0;">Amount:</label>
+                    <input type="text" id="cryptoAmount" placeholder="Enter amount" style="width: 100%; padding: 12px; background-color: #2A2E39; border: 1px solid #3A3E4A; border-radius: 4px; color: #D1D4DC; margin-bottom: 20px;">
+                </div>
+                <div id="qrCodeContainer" style="background-color: #131722; padding: 25px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; margin-bottom: 20px;">
+                    <img id="cryptoQRCode" src="btc.png" alt="QR Code" style="width: 180px; height: 180px; background-color: white; padding: 10px; border-radius: 4px;">
+                </div>
+                <div class="form-group">
+                    <div style="display: flex; align-items: center; background-color: #2A2E39; border-radius: 4px; padding: 10px; margin-bottom: 20px;">
+                        <input type="text" id="walletAddress" value="1D8QjV6pEt2Ey1urKKU8Y5AhCQL" readonly style="flex-grow: 1; background: none; border: none; color: #D1D4DC; padding: 5px;">
+                        <button id="copyAddressBtn" style="background: #2962FF; color: white; border: none; border-radius: 4px; padding: 8px 15px; cursor: pointer;">Copy</button>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <button type="button" class="cancel-btn" id="cancelDepositBtn" style="background-color: #4b5563; color: #cbd5e1; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer;">Cancel</button>
+                    <button type="button" id="requestDepositBtn" style="background-color: #2962FF; color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer;">Request Deposit</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
+    <!-- Withdraw Modal -->
+     <div id="withdrawModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Mock Withdraw</h2>
+                <span class="modal-close" id="closeWithdrawModal">×</span>
+            </div>
+            <form id="mockWithdrawForm" class="modal-form">
+                <div class="form-group">
+                    <label for="withdrawAmount">Amount (USD):</label>
+                    <input type="number" id="withdrawAmount" min="1" step="1" placeholder="Enter amount" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="cancel-btn" id="cancelWithdrawBtn">Cancel</button>
+                    <button type="submit" class="submit-btn">Withdraw</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="notificationPopup" class="notification-popup">Notification message here</div>
+
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Replace with YOUR Supabase Project URL and Anon Key
-        const SUPABASE_URL = 'https://jaftqqbxbwneolzlejep.supabase.co';     // <<<=== REPLACE THIS
+        // --- Supabase Client Initialization ---
+        const SUPABASE_URL = 'https://jaftqqbxbwneolzlejep.supabase.co ';     // <<<=== REPLACE THIS
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphZnRxcWJ4YnduZW9semxlamVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc1NDg2MjgsImV4cCI6MjA2MzEyNDYyOH0.Xpm-ZfaUyr0gTDj7eUthYF_D-SWAewJeWoa37T1Y3ik';  // <<<=== REPLACE THIS
 
         let supabaseClient = null;
+        let currentUser = null; // To store the current user object
 
-        if (SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY' &&
-            SUPABASE_URL && SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY) {
+        if (SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL' && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
             try {
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 console.log('Supabase client initialized on dashboard.');
             } catch (error) {
                 console.error('Error initializing Supabase client on dashboard:', error);
-                document.getElementById('userInfo').textContent = 'Error: App initialization failed.';
+                showNotification('Error: App initialization failed.', false);
             }
         } else {
             console.error('Supabase URL or Anon Key is not configured for dashboard. Please update dashboard.html.');
-            document.getElementById('userInfo').textContent = 'Error: App not configured.';
+            showNotification('Error: App not configured. Please contact support.', false);
         }
 
-        const userInfoDiv = document.getElementById('userInfo');
-        const logoutButton = document.getElementById('logoutButton');
+        // --- Global Variables & Initial State (Mock - No Supabase Yet for balance/trades) ---
+        let mockBalance = 10000.00; // Initial mock balance
+        let openTrades = []; 
+        let closedTrades = []; 
+        let pendingOrders = []; 
+        let currentTradingViewSymbol = "OANDA:XAUUSD"; 
+        let currentDisplaySymbol = "XAUUSD";
+        let tradeIdCounter = 0;
+        const MOCK_PROFIT_PERCENTAGE = 0.99; // 99% profit for mock trades
 
+        // --- DOM Elements ---
+        const usernameDisplayEl = document.getElementById('usernameDisplay');
+        const topHeaderBalanceValueEl = document.getElementById('topHeaderBalanceValue');
+        const balanceValEl = document.getElementById('balanceVal');
+        const equityValEl = document.getElementById('equityVal');
+        const freeMarginValEl = document.getElementById('freeMarginVal');
+        const logoutButtonEl = document.getElementById('logoutButton');
+        
+        const depositButtonEl = document.getElementById('depositButton');
+        const withdrawButtonEl = document.getElementById('withdrawButton');
+        
+        const depositModalEl = document.getElementById('depositModal');
+        const closeDepositModalBtn = document.getElementById('closeDepositModal');
+        const cancelDepositBtnEl = document.getElementById('cancelDepositBtn');
+        const mockDepositForm = document.getElementById('mockDepositForm');
+        const depositAmountInputEl = document.getElementById('depositAmount');
+        
+        const withdrawModalEl = document.getElementById('withdrawModal');
+        const closeWithdrawModalBtn = document.getElementById('closeWithdrawModal');
+        const cancelWithdrawBtnEl = document.getElementById('cancelWithdrawBtn');
+        const mockWithdrawForm = document.getElementById('mockWithdrawForm');
+        const withdrawAmountInputEl = document.getElementById('withdrawAmount');
+
+        const notificationPopupEl = document.getElementById('notificationPopup');
+        const orderPanelSymbolDisplayEl = document.getElementById('orderPanelSymbol');
+        const instrumentListContainerEl = document.getElementById('instrumentListContainer');
+        const currencyPairTabsContainerEl = document.getElementById('currencyPairTabsContainer');
+
+        const marketOrderFormEl = document.getElementById('marketOrderForm');
+        const pendingOrderFormEl = document.getElementById('pendingOrderForm');
+        const orderTypeTabsEl = document.querySelectorAll('.right-sidebar .order-type-tabs button');
+
+        const volumeInputEl = document.getElementById('volume');
+        const stopLossInputEl = document.getElementById('stopLoss');
+        const takeProfitInputEl = document.getElementById('takeProfit');
+        const buyButtonEl = document.getElementById('buyButton');
+        const sellButtonEl = document.getElementById('sellButton');
+
+        const openPositionsTableBodyEl = document.getElementById('openPositionsTableBody');
+        const pendingPositionsTableBodyEl = document.getElementById('pendingPositionsTableBody');
+        const closedPositionsTableBodyEl = document.getElementById('closedPositionsTableBody');
+        const bottomPanelTabsEl = document.querySelectorAll('.bottom-panel-tabs button');
+        const instrumentSearchInput = document.getElementById('instrumentSearch');
+
+
+        // --- Utility Functions ---
+        function showNotification(message, isSuccess = true) {
+            if (!notificationPopupEl) return;
+            notificationPopupEl.textContent = message;
+            notificationPopupEl.style.backgroundColor = isSuccess ? 'var(--green-positive)' : 'var(--danger-color)';
+            notificationPopupEl.style.color = 'white';
+            notificationPopupEl.style.display = 'block';
+            setTimeout(() => {
+                notificationPopupEl.style.display = 'none';
+            }, 3000);
+        }
+
+        function updateBalanceDisplay() {
+            const formattedBalance = mockBalance.toFixed(2) + " USD";
+            if (topHeaderBalanceValueEl) topHeaderBalanceValueEl.textContent = formattedBalance;
+            if (balanceValEl) balanceValEl.textContent = formattedBalance;
+            if (equityValEl) equityValEl.textContent = formattedBalance; 
+            if (freeMarginValEl) freeMarginValEl.textContent = formattedBalance; 
+        }
+
+        // --- Authentication & Initialization ---
         async function checkUserSessionAndDisplayInfo() {
             if (!supabaseClient) {
-                userInfoDiv.textContent = 'Application error. Supabase client not available.';
+                if (usernameDisplayEl) usernameDisplayEl.textContent = 'App Error';
+                showNotification('Application error. Supabase client not available.', false);
+                // Consider redirecting to login if Supabase isn't available
+                // setTimeout(() => { window.location.href = 'login.html'; }, 3000);
                 return;
             }
 
@@ -84,48 +435,663 @@
 
             if (sessionError) {
                 console.error('Error getting session:', sessionError);
-                userInfoDiv.textContent = 'Could not retrieve session.';
-                // Optional: redirect to login if session error is critical
-                // setTimeout(() => { window.location.href = 'login.html'; }, 1500);
+                if (usernameDisplayEl) usernameDisplayEl.textContent = 'Error';
+                showNotification('Could not retrieve session. Redirecting to login.', false);
+                setTimeout(() => { window.location.href = 'login.html'; }, 2000);
                 return;
             }
 
             if (session && session.user) {
-                const user = session.user;
-                console.log('User session found:', user);
-                console.log('User metadata:', user.user_metadata); // Log to see the metadata
-
-                // Get username from user_metadata if it exists, otherwise fallback to email
-                const displayName = user.user_metadata && user.user_metadata.username 
-                                    ? user.user_metadata.username 
-                                    : user.email;
-                
-                userInfoDiv.textContent = `Welcome, ${displayName}!`; 
-                                    
+                currentUser = session.user;
+                console.log('User session found:', currentUser);
+                const displayName = currentUser.user_metadata && currentUser.user_metadata.username 
+                                    ? currentUser.user_metadata.username 
+                                    : currentUser.email;
+                if (usernameDisplayEl) usernameDisplayEl.textContent = displayName;
+                // For now, we will use the mockBalance. Later, we'll fetch this from Supabase.
+                updateBalanceDisplay(); 
             } else {
                 console.log('No active user session found. Redirecting to login.');
-                userInfoDiv.textContent = 'No user logged in. Redirecting...';
-                setTimeout(() => { window.location.href = 'login.html'; }, 1000);
+                if (usernameDisplayEl) usernameDisplayEl.textContent = 'Not Logged In';
+                // No need to show notification here as it will redirect immediately
+                window.location.href = 'index.html';
             }
         }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            if (supabaseClient) { 
+                checkUserSessionAndDisplayInfo();
+            } else {
+                if (usernameDisplayEl) usernameDisplayEl.textContent = 'App Config Error';
+                showNotification('Supabase not initialized. Check console.', false)
+            }
+            
+            populateInstrumentListAndTabs();
+            initializeTradingViewChart(currentTradingViewSymbol);
+            renderOpenTrades(); 
 
-        if (logoutButton && supabaseClient) {
-            logoutButton.addEventListener('click', async () => {
-                const { error } = await supabaseClient.auth.signOut();
-                if (error) {
-                    console.error('Error logging out:', error);
-                    alert('Error logging out: ' + error.message);
-                } else {
-                    console.log('User logged out successfully.');
-                    window.location.href = 'index.html'; 
+            if (orderPanelSymbolDisplayEl) orderPanelSymbolDisplayEl.textContent = currentDisplaySymbol;
+
+            // Event Listeners
+            if (logoutButtonEl && supabaseClient) {
+                logoutButtonEl.addEventListener('click', async () => {
+                    const { error } = await supabaseClient.auth.signOut();
+                    if (error) {
+                        console.error('Error logging out:', error);
+                        showNotification('Error logging out: ' + error.message, false);
+                    } else {
+                        showNotification("Logged out successfully. Redirecting...");
+                        currentUser = null; 
+                        localStorage.removeItem('mockBalance'); // Clear mock balance on logout
+                        localStorage.removeItem('openTrades'); // Clear mock trades on logout
+                        localStorage.removeItem('closedTrades'); // Clear mock trades on logout
+                        setTimeout(() => window.location.href = 'login.html', 1500);
+                    }
+                });
+            }
+
+            if (depositButtonEl) depositButtonEl.addEventListener('click', () => depositModalEl.style.display = 'flex');
+            if (closeDepositModalBtn) closeDepositModalBtn.onclick = () => depositModalEl.style.display = 'none';
+            if (cancelDepositBtnEl) cancelDepositBtnEl.onclick = () => depositModalEl.style.display = 'none';
+            
+            // Crypto deposit handling
+            const cryptoCurrencySelect = document.getElementById('cryptoCurrency');
+            const cryptoQRCode = document.getElementById('cryptoQRCode');
+            const walletAddressInput = document.getElementById('walletAddress');
+            const copyAddressBtn = document.getElementById('copyAddressBtn');
+            const requestDepositBtn = document.getElementById('requestDepositBtn');
+            
+            // Wallet addresses for different cryptocurrencies (empty for now)
+            const walletAddresses = {
+                btc: '1D8QjV6pEt2Ey1urKKU8Y5AhCQL',
+                eth: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+                sol: '5ZPBHzMr4X2L3fEZfU9UWuBSKWFNVfyLwLXR7u6oCNzU',
+                usdt: 'TRX7NR9wdJCpXpkEopt5sRhcYyzgkAGvR7'
+            };
+            
+            // Update QR code and wallet address when currency changes
+            if (cryptoCurrencySelect) {
+                cryptoCurrencySelect.addEventListener('change', function() {
+                    const currency = this.value;
+                    cryptoQRCode.src = `${currency}.png`;
+                    walletAddressInput.value = walletAddresses[currency];
+                });
+            }
+            
+            // Copy wallet address to clipboard
+            if (copyAddressBtn) {
+                copyAddressBtn.addEventListener('click', function() {
+                    walletAddressInput.select();
+                    document.execCommand('copy');
+                    showNotification('Wallet address copied to clipboard!', true);
+                });
+            }
+            
+            // Request deposit button
+            if (requestDepositBtn) {
+                requestDepositBtn.addEventListener('click', function() {
+                    const amount = document.getElementById('cryptoAmount').value;
+                    const currency = cryptoCurrencySelect.value.toUpperCase();
+                    
+                    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+                        showNotification("Please enter a valid amount.", false);
+                        return;
+                    }
+                    
+                    // Mock deposit (in a real app this would be handled by backend)
+                    const mockUsdAmount = parseFloat(amount) * 1000; // Pretend conversion rate
+                    mockBalance += mockUsdAmount;
+                    updateBalanceDisplay();
+                    
+                    document.getElementById('cryptoAmount').value = "";
+                    depositModal.style.display = "none";
+                    showNotification(`Deposit request of ${amount} ${currency} submitted successfully!`);
+                });
+            }
+            
+            // Cancel deposit button
+            if (document.getElementById('cancelDepositBtn')) {
+                document.getElementById('cancelDepositBtn').addEventListener('click', function() {
+                    depositModal.style.display = "none";
+                });
+            }
+
+            if (withdrawButtonEl) {
+                withdrawButtonEl.addEventListener('click', () => {
+                    withdrawModalEl.style.display = 'flex';
+                });
+            }
+            if (closeWithdrawModalBtn) closeWithdrawModalBtn.onclick = () => withdrawModalEl.style.display = 'none';
+            if (cancelWithdrawBtnEl) cancelWithdrawBtnEl.onclick = () => withdrawModalEl.style.display = 'none';
+
+            if (mockWithdrawForm) {
+                mockWithdrawForm.addEventListener('submit', (event) => {
+                    event.preventDefault();
+                    const amount = parseFloat(withdrawAmountInputEl.value);
+                     if (isNaN(amount) || amount <= 0) { // Basic validation for amount
+                        showNotification("Please enter a valid withdrawal amount.", false);
+                        return;
+                    }
+                    // Regardless of amount or balance, show KYC message for this project
+                    withdrawModalEl.style.display = 'none'; 
+                    withdrawAmountInputEl.value = ''; 
+                    showNotification("KYC Pending. Deposit 500 USDT.", false);
+                });
+            }
+
+
+            orderTypeTabsEl.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    orderTypeTabsEl.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    if (this.dataset.ordertype === 'market') {
+                        marketOrderFormEl.style.display = 'block';
+                        pendingOrderFormEl.style.display = 'none';
+                    } else {
+                        marketOrderFormEl.style.display = 'none';
+                        pendingOrderFormEl.style.display = 'block';
+                    }
+                });
+            });
+            
+            if (buyButtonEl) buyButtonEl.addEventListener('click', () => handleTrade('buy'));
+            if (sellButtonEl) sellButtonEl.addEventListener('click', () => handleTrade('sell'));
+
+            setupChartControls();
+            setupBottomPanelTabs();
+
+            if(instrumentSearchInput) {
+                instrumentSearchInput.addEventListener('input', filterInstrumentList);
+            }
+        });
+
+        // --- TradingView Chart ---
+        let tradingViewWidgetInstance = null;
+        function initializeTradingViewChart(symbol) {
+            const chartContainer = document.getElementById('tradingview_chart_container');
+            if (!chartContainer) {
+                console.error("TradingView chart container not found!");
+                return;
+            }
+            chartContainer.innerHTML = ''; 
+
+            tradingViewWidgetInstance = new TradingView.widget({
+                "autosize": true, "symbol": symbol, "interval": "5", "timezone": "Etc/UTC", "theme": "dark",
+                "style": "1", "locale": "en", "toolbar_bg": "#1C212D", "enable_publishing": false,
+                "hide_side_toolbar": false, "allow_symbol_change": true, 
+                "container_id": "tradingview_chart_container",
+                "studies": ["MASimple@tv-basicstudies"],
+                "overrides": {
+                    "paneProperties.background": "#131722",
+                    "paneProperties.vertGridProperties.color": "#242834",
+                    "paneProperties.horzGridProperties.color": "#242834",
+                    "symbolWatermarkProperties.transparency": 90,
+                    "mainSeriesProperties.candleStyle.upColor": "#2962FF",
+                    "mainSeriesProperties.candleStyle.downColor": "#FF1744",
                 }
             });
         }
+        
+        const initialInstruments = [
+            { tradingview: "BINANCE:BTCUSDT", display: "BTC", icon: "", bid: 68010.24, ask: 68050.70, signal: "up", barColor: "green" },
+            { tradingview: "OANDA:XAUUSD", display: "XAUUSD", icon: "", bid: 2350.07, ask: 2350.90, signal: "down", barColor: "red" },
+            { tradingview: "NASDAQ:AAPL", display: "AAPL", icon: "", bid: 190.43, ask: 190.50, signal: "up", barColor: "green" },
+            { tradingview: "OANDA:EURUSD", display: "EURUSD", icon: "", bid: 1.0849, ask: 1.0851, signal: "down", barColor: "red" },
+            { tradingview: "OANDA:GBPUSD", display: "GBPUSD", icon: "", bid: 1.2720, ask: 1.2722, signal: "up", barColor: "green" },
+            { tradingview: "OANDA:USDJPY", display: "USDJPY", icon: "", bid: 156.28, ask: 156.30, signal: "up", barColor: "red" },
+            { tradingview: "CME_MINI:NQ1!", display: "USTEC", icon: "", bid: 18320.9, ask: 18322.4, signal: "down", barColor: "green" },
+            { tradingview: "NYMEX:CL1!", display: "USOIL", icon: "", bid: 77.99, ask: 78.02, signal: "up", barColor: "red" }
+        ];
 
-        // Check session when the page loads
-        if (supabaseClient) { // Only run if client is initialized
-            checkUserSessionAndDisplayInfo();
+        function populateInstrumentListAndTabs() {
+            if (!instrumentListContainerEl || !currencyPairTabsContainerEl) return;
+            instrumentListContainerEl.innerHTML = '';
+            currencyPairTabsContainerEl.innerHTML = '';
+
+            initialInstruments.forEach((instr, index) => {
+                // Populate left sidebar list
+                const li = document.createElement('li');
+                li.dataset.symbolTradingview = instr.tradingview;
+                li.dataset.symbolDisplay = instr.display;
+                
+                // Add alternating bar color class
+                const barColorClass = instr.barColor === 'green' ? 'green-bar' : 'red-bar';
+                li.classList.add(barColorClass);
+                
+                li.innerHTML = `
+                    <span class="drag-handle">⋮</span>
+                    <span class="symbol-icon">${instr.icon}</span>
+                    <span class="symbol-name">${instr.display}</span>
+                    <span class="symbol-extra-icon"></span>
+                    <span class="direction-arrow ${instr.signal}">${instr.signal === 'up' ? '↑' : (instr.signal === 'down' ? '↓' : '-')}</span>
+                    <span class="price-box bid-box">${instr.bid.toFixed(instr.display === 'BTC' || instr.display === 'USTEC' ? 2 : (instr.display.includes("JPY") ? 3 : 5) )}</span>
+                    <span class="price-box ask-box">${instr.ask.toFixed(instr.display === 'BTC' || instr.display === 'USTEC' ? 2 : (instr.display.includes("JPY") ? 3 : 5) )}</span>
+                `;
+                li.addEventListener('click', function() {
+                    currentTradingViewSymbol = this.dataset.symbolTradingview;
+                    currentDisplaySymbol = this.dataset.symbolDisplay;
+                    if (orderPanelSymbolDisplayEl) orderPanelSymbolDisplayEl.textContent = currentDisplaySymbol;
+                    initializeTradingViewChart(currentTradingViewSymbol);
+                    setActiveTopTab(currentDisplaySymbol);
+                });
+                instrumentListContainerEl.appendChild(li);
+
+                // Populate top currency pair tabs
+                const button = document.createElement('button');
+                button.textContent = instr.display;
+                if (instr.tradingview === currentTradingViewSymbol) { // Set default active tab based on initial symbol
+                    button.classList.add('active');
+                }
+                button.addEventListener('click', function() {
+                    setActiveTopTab(instr.display);
+                    currentTradingViewSymbol = instr.tradingview;
+                    currentDisplaySymbol = instr.display;
+                    if (orderPanelSymbolDisplayEl) orderPanelSymbolDisplayEl.textContent = currentDisplaySymbol;
+                    initializeTradingViewChart(currentTradingViewSymbol);
+                });
+                currencyPairTabsContainerEl.appendChild(button);
+            });
+            // Set default for order panel if not already set by active tab matching currentTradingViewSymbol
+            if (orderPanelSymbolDisplayEl) {
+                const activeTab = currencyPairTabsContainerEl.querySelector('button.active');
+                if(activeTab) {
+                    orderPanelSymbolDisplayEl.textContent = activeTab.textContent;
+                    currentDisplaySymbol = activeTab.textContent; // ensure currentDisplaySymbol is also set
+                } else if (initialInstruments.length > 0) { // Fallback to first instrument if no active tab
+                    orderPanelSymbolDisplayEl.textContent = initialInstruments[0].display;
+                    currentTradingViewSymbol = initialInstruments[0].tradingview;
+                    currentDisplaySymbol = initialInstruments[0].display;
+                    if(currencyPairTabsContainerEl.firstChild) currencyPairTabsContainerEl.firstChild.classList.add('active');
+                }
+            }
         }
+        
+        function setActiveTopTab(displaySymbol) {
+            const topTabs = document.querySelectorAll('#currencyPairTabsContainer button');
+            topTabs.forEach(tab => {
+                if (tab.textContent === displaySymbol) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+        }
+        
+        function filterInstrumentList() {
+            const filterText = instrumentSearchInput.value.toUpperCase();
+            const items = instrumentListContainerEl.getElementsByTagName('li');
+            for (let i = 0; i < items.length; i++) {
+                const symbolDisplay = items[i].dataset.symbolDisplay.toUpperCase();
+                if (symbolDisplay.includes(filterText)) {
+                    items[i].style.display = "flex"; // Use flex as it's a flex item
+                } else {
+                    items[i].style.display = "none";
+                }
+            }
+        }
+
+
+        function setupChartControls() { 
+            const controlButtons = document.querySelectorAll('.chart-controls button');
+            controlButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const interval = this.dataset.interval;
+                    if (interval && tradingViewWidgetInstance && typeof tradingViewWidgetInstance.chart === 'function') {
+                         tradingViewWidgetInstance.chart().setResolution(interval.toString()); 
+                         console.log(`Chart interval set to: ${interval}`);
+                    }
+                });
+            });
+        }
+        
+        // --- Mock Trading Logic ---
+        function handleTrade(type) { 
+            const vol = parseFloat(volumeInputEl.value);
+            const slString = stopLossInputEl.value;
+            const tpString = takeProfitInputEl.value;
+
+            const sl = slString ? parseFloat(slString) : null; 
+            const tp = tpString ? parseFloat(tpString) : null;
+
+            if (isNaN(vol) || vol <= 0) {
+                showNotification("Please enter a valid volume.", false); return;
+            }
+            
+            const activeSymbolData = initialInstruments.find(instr => instr.display === currentDisplaySymbol);
+            if (!activeSymbolData) {
+                showNotification("Could not determine current symbol prices.", false); return;
+            }
+
+            let openPrice = (type === 'buy') ? activeSymbolData.ask : activeSymbolData.bid;
+            
+            if (type === 'buy') {
+                if (sl !== null && sl >= openPrice) { showNotification("Stop Loss must be below open price for a BUY.", false); return; }
+                if (tp !== null && tp <= openPrice) { showNotification("Take Profit must be above open price for a BUY.", false); return; }
+            } else { 
+                if (sl !== null && sl <= openPrice) { showNotification("Stop Loss must be above open price for a SELL.", false); return; }
+                if (tp !== null && tp >= openPrice) { showNotification("Take Profit must be below open price for a SELL.", false); return; }
+            }
+
+            const trade = {
+                id: `trade-${++tradeIdCounter}`, symbol: currentDisplaySymbol, type: type, volume: vol,
+                openPrice: openPrice, sl: sl, tp: tp, openTime: new Date(), currentPrice: openPrice 
+            };
+
+            openTrades.push(trade);
+            renderOpenTrades();
+            showNotification(`${type.toUpperCase()} order for ${vol} lot(s) of ${currentDisplaySymbol} at ${openPrice.toFixed(getDecimalPlacesForSymbol(currentDisplaySymbol))} placed (mock).`);
+            
+            volumeInputEl.value = "0.01"; stopLossInputEl.value = ""; takeProfitInputEl.value = "";
+        }
+
+        function getDecimalPlacesForSymbol(symbol) {
+            if (symbol === 'BTC' || symbol === 'USTEC') return 2;
+            if (symbol.includes("JPY")) return 3;
+            return 5;
+        }
+
+
+        function closeTrade(tradeId, reason = 'Closed by User') {
+            const tradeIndex = openTrades.findIndex(t => t.id === tradeId);
+            if (tradeIndex === -1) return;
+
+            // Get the trade object first
+            const tradeToClose = openTrades[tradeIndex];
+
+            // Check if this trade is already being closed by TP (to prevent double-closing from rapid updates)
+            if (tradeToClose.beingClosedByTP && reason === 'Take Profit') {
+                // console.log(`Trade ${tradeId} is already being processed for TP, skipping duplicate close`);
+                return; 
+            }
+            if (reason === 'Take Profit') {
+                tradeToClose.beingClosedByTP = true; // Mark it so checkAndCloseTPHits doesn't re-trigger immediately
+            }
+
+            const trade = openTrades.splice(tradeIndex, 1)[0]; 
+            
+            const profitMultiplier = 100000; 
+            let profitAmount;
+            let closePrice;
+            
+            if (reason === 'Take Profit' && trade.tp) {
+                // If closed by take profit, the profit is the TP amount (or currentProfit if it slightly exceeded)
+                // The close price is the current market price at which TP was hit.
+                profitAmount = parseFloat(trade.currentProfit) >= parseFloat(trade.tp) ? parseFloat(trade.currentProfit) : parseFloat(trade.tp);
+                closePrice = trade.currentPrice; 
+            } else if (trade.currentProfit !== undefined && trade.currentPrice !== undefined) {
+                // For manual close or SL, use the current values
+                profitAmount = trade.currentProfit;
+                closePrice = trade.currentPrice;
+            } else {
+                // Fallback if currentProfit/currentPrice somehow not available (should not happen for active trades)
+                profitAmount = (trade.openPrice * trade.volume * profitMultiplier) * 0.01; // Minimal profit
+                closePrice = trade.type === 'buy' ? 
+                    trade.openPrice * 1.001 : 
+                    trade.openPrice * 0.999;
+            }
+            
+            // The logic to always ensure positive profit for display was already in updatePrices.
+            // For actual P/L booking, we should use the calculated or TP-defined profit.
+            // Let's ensure profitAmount is a number here.
+            profitAmount = parseFloat(profitAmount) || 0;
+
+            mockBalance += profitAmount;
+            updateBalanceDisplay();
+
+            const closedTrade = { ...trade, 
+                closePrice: parseFloat(closePrice).toFixed(getDecimalPlacesForSymbol(trade.symbol)),
+                profit: parseFloat(profitAmount.toFixed(2)), 
+                closeTime: new Date(),
+                reason: reason,
+                beingClosedByTP: false // Reset flag for the closed trade object
+            };
+            closedTrades.push(closedTrade);
+
+            renderOpenTrades();
+            renderClosedTrades(); 
+
+            let notificationMessage = `Trade ${trade.symbol} closed. Profit: ${profitAmount.toFixed(2)} USD.`;
+            if (reason === 'Take Profit') {
+                notificationMessage = `TAKE PROFIT HIT! Trade ${trade.symbol} closed. Profit: ${profitAmount.toFixed(2)} USD.`;
+            }
+            showNotification(notificationMessage);
+        }
+        
+        function renderOpenTrades() {
+            openPositionsTableBodyEl.innerHTML = ''; 
+            if (openTrades.length === 0) {
+                openPositionsTableBodyEl.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px;">No open positions</td></tr>';
+                return;
+            }
+            openTrades.forEach(trade => {
+                const profitMultiplier = 100000;
+                // Use the dynamically updated values if available, otherwise use the mock values
+                const currentProfit = trade.currentProfit !== undefined ? trade.currentProfit : (trade.openPrice * trade.volume * profitMultiplier) * MOCK_PROFIT_PERCENTAGE;
+                const displayCurrentPrice = trade.currentPrice !== undefined ? trade.currentPrice : (trade.type === 'buy' ? trade.openPrice * (1 + MOCK_PROFIT_PERCENTAGE * 0.0001) : trade.openPrice * (1 - MOCK_PROFIT_PERCENTAGE * 0.0001));
+
+                const row = document.createElement('tr');
+                const decimals = getDecimalPlacesForSymbol(trade.symbol);
+                row.innerHTML = `
+                    <td>${trade.symbol}</td>
+                    <td>${trade.type.toUpperCase()}</td>
+                    <td>${trade.volume.toFixed(2)}</td>
+                    <td>${trade.openPrice.toFixed(decimals)}</td>
+                    <td>${displayCurrentPrice.toFixed(decimals)}</td>
+                    <td>${trade.sl ? trade.sl.toFixed(decimals) : '-'}</td>
+                    <td>${trade.tp ? trade.tp.toFixed(decimals) : '-'}</td>
+                    <td style="color: var(--green-positive)">${currentProfit.toFixed(2)}</td>
+                    <td><button class="close-position-btn" data-id="${trade.id}">Close</button></td>
+                `;
+                openPositionsTableBodyEl.appendChild(row);
+            });
+            document.querySelectorAll('#openPositionsTableBody .close-position-btn').forEach(button => {
+                button.addEventListener('click', function() { closeTrade(this.dataset.id); });
+            });
+        }
+        
+        function renderClosedTrades() {
+            closedPositionsTableBodyEl.innerHTML = ''; 
+            if (closedTrades.length === 0) {
+                closedPositionsTableBodyEl.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px;">No closed positions</td></tr>';
+                return;
+            }
+            closedTrades.slice().reverse().forEach(trade => { 
+                const decimals = getDecimalPlacesForSymbol(trade.symbol);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${trade.symbol}</td>
+                    <td>${trade.type.toUpperCase()}</td>
+                    <td>${trade.volume.toFixed(2)}</td>
+                    <td>${trade.openPrice.toFixed(decimals)}</td>
+                    <td>${trade.closePrice.toFixed(decimals)}</td>
+                    <td>${trade.sl ? trade.sl.toFixed(decimals) : '-'}</td>
+                    <td>${trade.tp ? trade.tp.toFixed(decimals) : '-'}</td>
+                    <td style="color: var(--green-positive)">${trade.profit.toFixed(2)}</td>
+                `;
+                closedPositionsTableBodyEl.appendChild(row);
+            });
+        }
+
+        function setupBottomPanelTabs() {
+            bottomPanelTabsEl.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    bottomPanelTabsEl.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    openPositionsTableBodyEl.style.display = 'none';
+                    pendingPositionsTableBodyEl.style.display = 'none';
+                    closedPositionsTableBodyEl.style.display = 'none';
+
+                    if (this.dataset.tab === 'open') openPositionsTableBodyEl.style.display = '';
+                    else if (this.dataset.tab === 'pending') pendingPositionsTableBodyEl.style.display = '';
+                    else if (this.dataset.tab === 'closed') closedPositionsTableBodyEl.style.display = '';
+                });
+            });
+        }
+
+        // Force close any trades where TP has been hit
+        function checkAndCloseTPHits() {
+            if (openTrades.length > 0) {
+                // Make a copy of the array to avoid modification issues during iteration
+                const tradesArray = [...openTrades];
+                
+                tradesArray.forEach(trade => {
+                    if (trade.tp && !trade.beingClosedByTP && trade.currentProfit !== undefined) {
+                        // Check if current profit meets or exceeds TP amount
+                        // trade.tp is considered the target profit amount
+                        if (parseFloat(trade.currentProfit) >= parseFloat(trade.tp)) {
+                            console.log(`TP HIT for ${trade.id}: Profit ${trade.currentProfit} >= TP amount ${trade.tp}`);
+                            trade.beingClosedByTP = true;
+                            closeTrade(trade.id, 'Take Profit');
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Update trade prices and check for TP/SL hits
+        const priceSimulation = {};
+        const profitMultiplier = 100000; // Define globally for access in updatePrices
+        
+
+        function updatePrices() {
+            const now = Date.now();
+            
+            initialInstruments.forEach(instr => {
+                const sim = priceSimulation[instr.display] || { lastDirection: 1, basePrice: instr.bid }; // Initialize if not present
+                if (!priceSimulation[instr.display]) {
+                    priceSimulation[instr.display] = sim; // Store if newly initialized
+                }
+                
+                let newBid;
+                
+                // Simplified "normal" price movement
+                const maxChangePercentage = 0.00015; // Max 0.015% of basePrice per tick
+                const changeAmount = sim.basePrice * maxChangePercentage * (Math.random() * 0.4 + 0.6); // Vary step size
+                
+                // Maintain some directional momentum but allow random changes
+                if (Math.random() < 0.3) { 
+                    sim.lastDirection *= -1;
+                } else if (Math.random() < 0.05) {
+                    sim.lastDirection = (Math.random() > 0.5 ? 1 : -1);
+                }
+
+                let priceChange = changeAmount * sim.lastDirection;
+                newBid = instr.bid + priceChange;
+                
+                if (Math.abs(instr.bid - sim.basePrice) > sim.basePrice * 0.01) {
+                     sim.basePrice = instr.bid; 
+                }
+
+                const minBoundaryPrice = sim.basePrice * 0.98;
+                const maxBoundaryPrice = sim.basePrice * 1.02;
+                
+                if (newBid < minBoundaryPrice) {
+                    newBid = minBoundaryPrice; 
+                    sim.lastDirection = 1;
+                } else if (newBid > maxBoundaryPrice) {
+                    newBid = maxBoundaryPrice; 
+                    sim.lastDirection = -1;
+                }
+                newBid = Math.max(0.00001, newBid);
+
+                const change = newBid - instr.bid;
+                instr.bid = parseFloat(newBid.toFixed(getDecimalPlacesForSymbol(instr.display)));
+                instr.ask = parseFloat((instr.bid * (1.0002 + Math.random() * 0.0001)).toFixed(getDecimalPlacesForSymbol(instr.display)));
+                instr.signal = change > 0 ? 'up' : (change < 0 ? 'down' : 'neutral');
+                sim.lastUpdate = now;
+
+                // Update trade.currentPrice and trade.currentProfit for trades of this instrument
+                openTrades.filter(t => t.symbol === instr.display && !t.beingClosedByTP).forEach(trade => {
+                    trade.currentPrice = instr.bid; 
+                    
+                    let actualCalculatedProfit;
+                    if (trade.type === 'buy') {
+                        actualCalculatedProfit = (trade.currentPrice - trade.openPrice) * trade.volume * profitMultiplier;
+                    } else { // sell
+                        actualCalculatedProfit = (trade.openPrice - trade.currentPrice) * trade.volume * profitMultiplier;
+                    }
+
+                    // Determine displayed profit
+                    if (actualCalculatedProfit > 5.00) { // If real profit is significantly positive
+                        trade.currentProfit = parseFloat(actualCalculatedProfit.toFixed(2));
+                    } else {
+                        // Real profit is low, zero, or negative. Simulate positive/growing profit.
+                        if (trade.tp && parseFloat(trade.tp) > 0) { // If TP is set and is a positive value
+                            const targetTP = parseFloat(trade.tp);
+                            const minimumInitialDisplayProfit = 0.50; 
+
+                            if (trade.currentProfit === undefined || trade.currentProfit < minimumInitialDisplayProfit || trade.currentProfit > targetTP) {
+                                if (trade.currentProfit !== undefined && trade.currentProfit >= targetTP) {
+                                    trade.currentProfit = targetTP;
+                                } else {
+                                    trade.currentProfit = parseFloat((Math.random() * 5 + minimumInitialDisplayProfit).toFixed(2));
+                                }
+                            }
+                            
+                            if (trade.currentProfit < targetTP) {
+                                let increment = 0;
+                                let incrementBase = targetTP * 0.0005; 
+                                let randomFactor = targetTP * (Math.random() * 0.001);
+                                increment = incrementBase + randomFactor;
+                                increment = Math.max(increment, 0.01); 
+                                trade.currentProfit += increment;
+                            }
+
+                            if (trade.currentProfit >= targetTP) {
+                                trade.currentProfit = targetTP;
+                            }
+                            trade.currentProfit = parseFloat(trade.currentProfit.toFixed(2));
+
+                        } else {
+                            // No valid TP set, and actual profit is low/negative.
+                            trade.currentProfit = parseFloat((Math.random() * 10 + 0.50).toFixed(2)); 
+                        }
+                    }
+                });
+
+                // Update instrument list in the UI (bidBox, askBox)
+                const listItem = instrumentListContainerEl.querySelector(`li[data-symbol-display=\"${instr.display}\"]`);
+                if (listItem) {
+                    const bidBox = listItem.querySelector('.bid-box');
+                    const askBox = listItem.querySelector('.ask-box');
+                    const prevBidText = bidBox.textContent;
+                    const newBidFormatted = instr.bid.toFixed(getDecimalPlacesForSymbol(instr.display));
+                    const newAskFormatted = instr.ask.toFixed(getDecimalPlacesForSymbol(instr.display));
+
+                    if (bidBox.textContent !== newBidFormatted) {
+                         const prevBid = parseFloat(prevBidText);
+                         bidBox.textContent = newBidFormatted;
+                        if (!isNaN(prevBid)) {
+                            if (instr.bid > prevBid) {
+                                bidBox.classList.add('price-up');
+                                bidBox.classList.remove('price-down');
+                            } else if (instr.bid < prevBid) {
+                                bidBox.classList.add('price-down');
+                                bidBox.classList.remove('price-up');
+                            }
+                            setTimeout(() => {
+                                bidBox.classList.remove('price-up', 'price-down');
+                            }, 500);
+                        }
+                    }
+                    if (askBox.textContent !== newAskFormatted) {
+                        askBox.textContent = newAskFormatted;
+                    }
+                    const arrow = listItem.querySelector('.direction-arrow');
+                    arrow.className = `direction-arrow ${instr.signal}`;
+                    arrow.textContent = instr.signal === 'up' ? '↑' : (instr.signal === 'down' ? '↓' : '-');
+                }
+            });
+            
+            if (openTrades.length > 0) {
+                renderOpenTrades(); 
+                checkAndCloseTPHits(); 
+            }
+        }
+
+        setInterval(updatePrices, 1000); // Update every 1 second
+
     </script>
 </body>
 </html>
