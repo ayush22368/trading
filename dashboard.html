@@ -437,7 +437,7 @@
                 console.error('Error getting session:', sessionError);
                 if (usernameDisplayEl) usernameDisplayEl.textContent = 'Error';
                 showNotification('Could not retrieve session. Redirecting to login.', false);
-                setTimeout(() => { window.location.href = 'login.html'; }, 2000);
+                setTimeout(() => { window.location.href = 'index.html'; }, 2000);
                 return;
             }
 
