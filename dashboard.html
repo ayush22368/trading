@@ -792,22 +792,32 @@
 
 
         function closeTrade(tradeId, reason = 'Closed by User') {
-            const tradeIndex = openTrades.findIndex(t => t.id === tradeId);
-            if (tradeIndex === -1) return;
+    console.log(`Closing trade ${tradeId} with reason: ${reason}`);
+    
+    const tradeIndex = openTrades.findIndex(t => t.id === tradeId);
+    if (tradeIndex === -1) {
+        console.log(`Trade ${tradeId} not found in openTrades array`);
+        return;
+    }
 
-            // Get the trade object first
-            const tradeToClose = openTrades[tradeIndex];
+    // Get the trade object first
+    const tradeToClose = openTrades[tradeIndex];
+    console.log(`Found trade to close:`, tradeToClose);
 
-            // Check if this trade is already being closed by TP (to prevent double-closing from rapid updates)
-            if (tradeToClose.beingClosedByTP && reason === 'Take Profit') {
-                // console.log(`Trade ${tradeId} is already being processed for TP, skipping duplicate close`);
-                return; 
-            }
-            if (reason === 'Take Profit') {
-                tradeToClose.beingClosedByTP = true; // Mark it so checkAndCloseTPHits doesn't re-trigger immediately
-            }
+    // Check if this trade is already being closed (to prevent double-closing from rapid updates)
+    if (tradeToClose.beingClosedByTP && reason === 'Take Profit') {
+        console.log(`Trade ${tradeId} is already being processed for TP, skipping duplicate close`);
+        return; 
+    }
+    if (reason === 'Take Profit') {
+        tradeToClose.beingClosedByTP = true; // Mark it so checkAndCloseTPHits doesn't re-trigger immediately
+    }
 
-            const trade = openTrades.splice(tradeIndex, 1)[0]; 
+    // Make a copy before removing from openTrades
+    const trade = {...openTrades[tradeIndex]};
+    // Remove from openTrades array
+    openTrades.splice(tradeIndex, 1);
+    console.log(`Removed trade from openTrades. Remaining open trades: ${openTrades.length}`);
             
             const profitMultiplier = 100000; 
             let profitAmount;
@@ -835,11 +845,18 @@
             // Let's ensure profitAmount is a number here.
             profitAmount = parseFloat(profitAmount) || 0;
 
+            // Ensure the final recorded profit for the closed trade is always positive, consistent with user preference
+            if (profitAmount <= 0) { 
+                // Generate a small random positive profit (e.g., between 0.50 and 5.50)
+                profitAmount = parseFloat((Math.random() * 5 + 0.50).toFixed(2)); 
+            }
+
             mockBalance += profitAmount;
             updateBalanceDisplay();
 
             const closedTrade = { ...trade, 
-                closePrice: parseFloat(closePrice).toFixed(getDecimalPlacesForSymbol(trade.symbol)),
+                // Store as a NUMBER, not a string, so we can call .toFixed() on it later
+                closePrice: parseFloat(closePrice),
                 profit: parseFloat(profitAmount.toFixed(2)), 
                 closeTime: new Date(),
                 reason: reason,
@@ -847,8 +864,9 @@
             };
             closedTrades.push(closedTrade);
 
+            // Just update the UI without switching tabs
             renderOpenTrades();
-            renderClosedTrades(); 
+            renderClosedTrades();
 
             let notificationMessage = `Trade ${trade.symbol} closed. Profit: ${profitAmount.toFixed(2)} USD.`;
             if (reason === 'Take Profit') {
@@ -858,75 +876,119 @@
         }
         
         function renderOpenTrades() {
-            openPositionsTableBodyEl.innerHTML = ''; 
-            if (openTrades.length === 0) {
-                openPositionsTableBodyEl.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px;">No open positions</td></tr>';
-                return;
-            }
-            openTrades.forEach(trade => {
-                const profitMultiplier = 100000;
-                // Use the dynamically updated values if available, otherwise use the mock values
-                const currentProfit = trade.currentProfit !== undefined ? trade.currentProfit : (trade.openPrice * trade.volume * profitMultiplier) * MOCK_PROFIT_PERCENTAGE;
-                const displayCurrentPrice = trade.currentPrice !== undefined ? trade.currentPrice : (trade.type === 'buy' ? trade.openPrice * (1 + MOCK_PROFIT_PERCENTAGE * 0.0001) : trade.openPrice * (1 - MOCK_PROFIT_PERCENTAGE * 0.0001));
+    console.log(`Rendering open trades, count: ${openTrades.length}`);
+    openPositionsTableBodyEl.innerHTML = ''; 
+    if (openTrades.length === 0) {
+        openPositionsTableBodyEl.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px;">No open positions</td></tr>';
+        return;
+    }
+    
+    openTrades.forEach(trade => {
+        const profitMultiplier = 100000;
+        // Use the dynamically updated values if available, otherwise use the mock values
+        const currentProfit = trade.currentProfit !== undefined ? trade.currentProfit : (trade.openPrice * trade.volume * profitMultiplier) * MOCK_PROFIT_PERCENTAGE;
+        const displayCurrentPrice = trade.currentPrice !== undefined ? trade.currentPrice : (trade.type === 'buy' ? trade.openPrice * (1 + MOCK_PROFIT_PERCENTAGE * 0.0001) : trade.openPrice * (1 - MOCK_PROFIT_PERCENTAGE * 0.0001));
 
-                const row = document.createElement('tr');
-                const decimals = getDecimalPlacesForSymbol(trade.symbol);
-                row.innerHTML = `
-                    <td>${trade.symbol}</td>
-                    <td>${trade.type.toUpperCase()}</td>
-                    <td>${trade.volume.toFixed(2)}</td>
-                    <td>${trade.openPrice.toFixed(decimals)}</td>
-                    <td>${displayCurrentPrice.toFixed(decimals)}</td>
-                    <td>${trade.sl ? trade.sl.toFixed(decimals) : '-'}</td>
-                    <td>${trade.tp ? trade.tp.toFixed(decimals) : '-'}</td>
-                    <td style="color: var(--green-positive)">${currentProfit.toFixed(2)}</td>
-                    <td><button class="close-position-btn" data-id="${trade.id}">Close</button></td>
-                `;
-                openPositionsTableBodyEl.appendChild(row);
-            });
-            document.querySelectorAll('#openPositionsTableBody .close-position-btn').forEach(button => {
-                button.addEventListener('click', function() { closeTrade(this.dataset.id); });
-            });
+        const row = document.createElement('tr');
+        const decimals = getDecimalPlacesForSymbol(trade.symbol);
+        row.innerHTML = `
+            <td>${trade.symbol}</td>
+            <td>${trade.type.toUpperCase()}</td>
+            <td>${trade.volume.toFixed(2)}</td>
+            <td>${trade.openPrice.toFixed(decimals)}</td>
+            <td>${displayCurrentPrice.toFixed(decimals)}</td>
+            <td>${trade.sl ? trade.sl.toFixed(decimals) : '-'}</td>
+            <td>${trade.tp ? trade.tp.toFixed(decimals) : '-'}</td>
+            <td style="color: var(--green-positive)">${currentProfit.toFixed(2)}</td>
+            <td><button class="close-position-btn" data-id="${trade.id}">Close</button></td>
+        `;
+        openPositionsTableBodyEl.appendChild(row);
+    });
+    // Attach event listeners to all close buttons
+    const closeButtons = document.querySelectorAll('#openPositionsTableBody .close-position-btn');
+    console.log(`Attaching listeners to ${closeButtons.length} close buttons`);
+    closeButtons.forEach(button => {
+        // Remove any existing listeners first to prevent duplicates
+        button.removeEventListener('click', handleCloseButtonClick);
+        // Add the new listener
+        button.addEventListener('click', handleCloseButtonClick);
+    });
+}
+
+        // Separate handler function for the close button to ensure consistent behavior
+        function handleCloseButtonClick(event) {
+            const tradeId = event.target.dataset.id;
+            console.log(`Close button clicked for trade ID: ${tradeId}`);
+            closeTrade(tradeId);
         }
         
-        function renderClosedTrades() {
+                function renderClosedTrades() {
+            console.log(`Rendering closed trades, count: ${closedTrades.length}`);
             closedPositionsTableBodyEl.innerHTML = ''; 
             if (closedTrades.length === 0) {
                 closedPositionsTableBodyEl.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px;">No closed positions</td></tr>';
                 return;
             }
-            closedTrades.slice().reverse().forEach(trade => { 
+            
+            // Make a copy and reverse to show newest first
+            const tradesToDisplay = [...closedTrades].reverse();
+            console.log(`Displaying ${tradesToDisplay.length} closed trades`);
+            
+            tradesToDisplay.forEach(trade => { 
                 const decimals = getDecimalPlacesForSymbol(trade.symbol);
                 const row = document.createElement('tr');
+                // Add a data attribute to help with debugging
+                row.setAttribute('data-trade-id', trade.id);
                 row.innerHTML = `
                     <td>${trade.symbol}</td>
                     <td>${trade.type.toUpperCase()}</td>
                     <td>${trade.volume.toFixed(2)}</td>
                     <td>${trade.openPrice.toFixed(decimals)}</td>
-                    <td>${trade.closePrice.toFixed(decimals)}</td>
+                    <td>${typeof trade.closePrice === 'number' ? trade.closePrice.toFixed(decimals) : trade.closePrice}</td>
                     <td>${trade.sl ? trade.sl.toFixed(decimals) : '-'}</td>
                     <td>${trade.tp ? trade.tp.toFixed(decimals) : '-'}</td>
-                    <td style="color: var(--green-positive)">${trade.profit.toFixed(2)}</td>
+                    <td style="color: var(--green-positive)">${typeof trade.profit === 'number' ? trade.profit.toFixed(2) : trade.profit}</td>
                 `;
                 closedPositionsTableBodyEl.appendChild(row);
             });
         }
 
-        function setupBottomPanelTabs() {
+                function setupBottomPanelTabs() {
+            console.log('Setting up bottom panel tabs');
             bottomPanelTabsEl.forEach(tab => {
-                tab.addEventListener('click', function() {
-                    bottomPanelTabsEl.forEach(t => t.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    openPositionsTableBodyEl.style.display = 'none';
-                    pendingPositionsTableBodyEl.style.display = 'none';
-                    closedPositionsTableBodyEl.style.display = 'none';
-
-                    if (this.dataset.tab === 'open') openPositionsTableBodyEl.style.display = '';
-                    else if (this.dataset.tab === 'pending') pendingPositionsTableBodyEl.style.display = '';
-                    else if (this.dataset.tab === 'closed') closedPositionsTableBodyEl.style.display = '';
-                });
+                // Remove existing listeners to prevent duplicates
+                tab.removeEventListener('click', handleTabClick);
+                tab.addEventListener('click', handleTabClick);
             });
+        }
+
+        function handleTabClick(event) {
+            const tabName = event.target.dataset.tab;
+            console.log(`Tab clicked: ${tabName}`);
+            
+            // Update active tab styling
+            bottomPanelTabsEl.forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Hide all tables first
+            openPositionsTableBodyEl.style.display = 'none';
+            pendingPositionsTableBodyEl.style.display = 'none';
+            closedPositionsTableBodyEl.style.display = 'none';
+
+            // Show the selected table
+            if (tabName === 'open') {
+                openPositionsTableBodyEl.style.display = '';
+                console.log(`Showing OPEN tab with ${openTrades.length} trades`);
+            }
+            else if (tabName === 'pending') {
+                pendingPositionsTableBodyEl.style.display = '';
+            }
+            else if (tabName === 'closed') {
+                closedPositionsTableBodyEl.style.display = '';
+                console.log(`Showing CLOSED tab with ${closedTrades.length} trades`);
+                // Force re-render of closed trades when tab is clicked
+                renderClosedTrades();
+            }
         }
 
         // Force close any trades where TP has been hit
